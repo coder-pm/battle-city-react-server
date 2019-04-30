@@ -15,6 +15,7 @@ import {MISSILE_MOVE_HANDLER} from "../../../game/handlers/MissileMoveHandler";
 import Structure from "../../../game/models/Structure";
 import {MAP_1} from "../../../game/maps/Map1";
 import Point from "../../../game/models/Point";
+import {HandshakingStatus} from "../../../game/enums/HandshakingStatus";
 
 /**
  * Class Game - class representing game.
@@ -83,7 +84,7 @@ export default class Game {
             if (Object.values(this.clients).length < Object.values(this.spawnPoints).length) {
                 // create new tank (client) and register disconnect handler
                 const clientId = uuidv4();
-                socket.on('disconnect', () => {
+                socket.on(NetworkPacket.DISCONNECT, () => {
                     delete this.clients[clientId];
                     delete this.tanks[clientId];
                     this.world.removeObject(clientId);
@@ -121,13 +122,13 @@ export default class Game {
                 });
 
                 // sent client id and obstacles to new client
-                socket.emit(NetworkPacket.HANDSHAKING, {clientId: clientId, full: false});
+                socket.emit(NetworkPacket.GAME_HANDSHAKING, {clientId: clientId, status: HandshakingStatus.SUCCESS});
                 socket.emit(NetworkPacket.BOARD_STATE_OBSTACLES, Object.values(this.obstacles));
 
                 // send tank list to all players
                 this.io.emit(NetworkPacket.BOARD_STATE_TANKS, Object.values(this.tanks));
             } else {
-                socket.emit(NetworkPacket.HANDSHAKING, {clientId: null, full: true});
+                socket.emit(NetworkPacket.GAME_HANDSHAKING, {clientId: null, status: HandshakingStatus.FULL});
             }
         });
 
