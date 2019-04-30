@@ -88,6 +88,7 @@ export default class Game {
                     delete this.clients[clientId];
                     delete this.tanks[clientId];
                     this.world.removeObject(clientId);
+                    this.io.emit(NetworkPacket.BOARD_STATE_TANKS, Object.values(this.tanks));
                     console.debug(`User disconnected: ${socket.id}`);
                 });
                 const spawnId = this.selectSpawnPoint();
