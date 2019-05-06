@@ -1,6 +1,7 @@
 import {GAME_FRAMERATE, GAME_SERVER_ADDRESS, GAME_SERVER_PORT, TANK_HEIGHT, TANK_WIDTH} from "../../../constants";
 import World from "../../../game/classes/World";
 import uuidv4 from 'uuid/v4';
+import debounce from 'lodash.debounce';
 import SocketIO from 'socket.io';
 import http, {Server} from "http";
 import {NetworkPacket} from "../../../game/enums/NetworkPacket";
@@ -128,6 +129,19 @@ export default class Game {
 
                 // send tank list to all players
                 this.io.emit(NetworkPacket.BOARD_STATE_TANKS, Object.values(this.tanks));
+
+                // start measuring of latency
+                let lastPing = new Date().getTime();
+                let latency = 0;
+                const pingFn = debounce(() => {
+                    socket.emit(NetworkPacket.GAME_PING, latency);
+                    lastPing = new Date().getTime();
+                }, 1000);
+                socket.on(NetworkPacket.GAME_PONG, () => {
+                    latency = new Date().getTime() - lastPing;
+                    pingFn();
+                });
+                pingFn();
             } else {
                 socket.emit(NetworkPacket.GAME_HANDSHAKING, {clientId: null, status: HandshakingStatus.FULL});
             }
