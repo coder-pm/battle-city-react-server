@@ -225,20 +225,26 @@ export default class Game {
     protected loop() {
         // perform tank moves
         for (const tank of Object.values(this.tanks)) {
-            const client = this.clients[tank.id];
-            const move = TANK_MOVE_HANDLER(tank, this.world, false, client.activeKey);
-            tank.location = move.location;
-            tank.rotation = move.rotation;
+            // tank might been destroyed in previous iteration
+            if (typeof this.tanks[tank.id] === 'object') {
+                const client = this.clients[tank.id];
+                const move = TANK_MOVE_HANDLER(tank, this.world, false, client.activeKey);
+                tank.location = move.location;
+                tank.rotation = move.rotation;
+            }
         }
 
         // perform missile moves
         for (const missile of Object.values(this.missiles)) {
-            const move = MISSILE_MOVE_HANDLER(missile, this.world, missile.direction, missile.axis);
-            // post move related actions
-            if (move.hitObjects.length > 0) {
-                this.fellMissile(missile.id, missile.tankId, move.hitObjects);
-            } else {
-                this.missiles[missile.id].location = move.location;
+            // missile might been destroyed in previous iteration
+            if (typeof this.missiles[missile.id] === 'object') {
+                const move = MISSILE_MOVE_HANDLER(missile, this.world, missile.direction, missile.axis);
+                // post move related actions
+                if (move.hitObjects.length > 0) {
+                    this.fellMissile(missile.id, missile.tankId, move.hitObjects);
+                } else {
+                    this.missiles[missile.id].location = move.location;
+                }
             }
         }
     }
