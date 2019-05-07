@@ -249,10 +249,13 @@ export default class Game {
         // check if its possible to spawn tank here
         if (this.world.isIntersecting(tank, Collision.BLOCK_MOVE).length === 0) {
             const client = this.clients[tank.id];
-            tank.location = this.spawnPoints[client.spawnId];
-            this.tanks[tank.id] = tank;
-            this.world.registerObject(tank, Collision.BLOCK_ALL);
-            this.io.emit(NetworkPacket.BOARD_STATE_TANKS, Object.values(this.tanks));
+            // abort respawning if client quit
+            if (typeof client === 'object') {
+                tank.location = this.spawnPoints[client.spawnId];
+                this.tanks[tank.id] = tank;
+                this.world.registerObject(tank, Collision.BLOCK_ALL);
+                this.io.emit(NetworkPacket.BOARD_STATE_TANKS, Object.values(this.tanks));
+            }
         } else {
             // defer spawning
             setTimeout(() => this.spawnTank(tank), 1000);
