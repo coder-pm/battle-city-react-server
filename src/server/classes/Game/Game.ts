@@ -17,9 +17,12 @@ import Structure from "../../../game/models/Structure";
 import {MAP_1} from "../../../game/maps/Map1";
 import Point from "../../../game/models/Point";
 import {HandshakingStatus} from "../../../game/enums/HandshakingStatus";
+import TankEventKeyboardPacket from "../../../game/models/network/TankEventKeyboardPacket";
 
 /**
  * Class Game - class representing game.
+ *
+ * TODO: refactor this class.
  */
 export default class Game {
     /**
@@ -104,14 +107,26 @@ export default class Game {
                 this.world.registerObject(this.tanks[clientId], Collision.BLOCK_ALL);
 
                 // add keyboard listener
-                socket.on(NetworkPacket.TANK_EVENT_KEYBOARD, (key: string) => {
-                    this.clients[clientId].activeKey = key;
-                    this.io.emit(NetworkPacket.TANK_EVENT_KEYBOARD, {
-                        tankId: clientId,
-                        key: key,
-                        location: this.tanks[clientId].location,
-                        rotation: this.tanks[clientId].rotation
-                    })
+                socket.on(NetworkPacket.TANK_EVENT_KEYBOARD, (packet: TankEventKeyboardPacket) => {
+                    // tank might be destroyed in meantime
+                    if (typeof this.tanks[clientId] === 'object') {
+                        this.clients[clientId].activeKey = packet.key;
+                        const distance = Math.sqrt(
+                            Math.pow(packet.location.x - this.tanks[clientId].location.x, 2) +
+                            Math.pow(packet.location.y - this.tanks[clientId].location.y, 2)
+                        );
+                        // fix location due to latency and micro differences in server game loop
+                        if (distance > 10) {
+                            this.tanks[clientId].location = packet.location;
+                            this.world.updateObject(clientId, packet.location);
+                        }
+                        this.io.emit(NetworkPacket.TANK_EVENT_KEYBOARD, {
+                            tankId: clientId,
+                            key: packet.key,
+                            location: this.tanks[clientId].location,
+                            rotation: this.tanks[clientId].rotation
+                        })
+                    }
                 });
 
                 // add fire listener
