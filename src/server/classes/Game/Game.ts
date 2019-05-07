@@ -10,7 +10,7 @@ import {TankActor} from "../../../game/enums/TankActor";
 import ObstacleModel from "../../../game/models/components/ObstacleModel";
 import {Collision} from "../../../game/enums/Collision";
 import {ObstacleType} from "../../../game/enums/ObstacleType";
-import {TANK_MOVE_HANDLER} from "../../../game/handlers/TankMoveHandler";
+import {TANK_MOVE_HANDLER, TANK_STEP_HANDLER} from "../../../game/handlers/TankMoveHandler";
 import MissileModel from "../../../game/models/components/MissileModel";
 import {MISSILE_MOVE_HANDLER} from "../../../game/handlers/MissileMoveHandler";
 import Structure from "../../../game/models/Structure";
@@ -110,16 +110,27 @@ export default class Game {
                 socket.on(NetworkPacket.TANK_EVENT_KEYBOARD, (packet: TankEventKeyboardPacket) => {
                     // tank might be destroyed in meantime
                     if (typeof this.tanks[clientId] === 'object') {
-                        this.clients[clientId].activeKey = packet.key;
+                        let location = this.tanks[clientId].location;
                         const distance = Math.sqrt(
-                            Math.pow(packet.location.x - this.tanks[clientId].location.x, 2) +
-                            Math.pow(packet.location.y - this.tanks[clientId].location.y, 2)
+                            Math.pow(packet.location.x - location.x, 2) +
+                            Math.pow(packet.location.y - location.y, 2)
                         );
                         // fix location due to latency and micro differences in server game loop
                         if (distance > 10) {
-                            this.tanks[clientId].location = packet.location;
-                            this.world.updateObject(clientId, packet.location);
+                            location = packet.location;
                         }
+                        // fix rotation (we should take in account new key)
+                        const predict = TANK_STEP_HANDLER({
+                            location: location,
+                            rotation: this.tanks[clientId].rotation,
+                            isStuck: false
+                        }, packet.key, 0);
+                        // update state
+                        this.tanks[clientId].location = predict.location;
+                        this.tanks[clientId].rotation = predict.rotation;
+                        this.world.updateObject(clientId, predict.location);
+                        this.clients[clientId].activeKey = packet.key;
+                        // broadcast update
                         this.io.emit(NetworkPacket.TANK_EVENT_KEYBOARD, {
                             tankId: clientId,
                             key: packet.key,
